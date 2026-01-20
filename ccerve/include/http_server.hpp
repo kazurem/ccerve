@@ -1,12 +1,17 @@
 #pragma once
 #include <iostream>
+#include <memory>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
 #include <unistd.h>
-#include <sstream>
-#include <array>
-#include "logger.hpp"
+#include <memory>
+
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/basic_file_sink.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+
 #include "http_parser.hpp"
 
 namespace http
@@ -34,8 +39,9 @@ namespace http
         void sendResponse(std::string response, const in_addr client_addr, std::string status_line);
         void createAndBindSocket();
 
+        std::shared_ptr<spdlog::logger> logger;
+
         HTTPRequest req_handler;
         HTTPResponse response;
-        Logger *logger;
     };
 }

@@ -1,8 +1,6 @@
-a.out
-http-server
-test.cpp
-test
-log.txt
-index.html
-style.css
 stanford-image.webp
+.cache/
+cerve-logs/
+build/
+builddir/
+subprojects/*/

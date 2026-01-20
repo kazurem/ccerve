@@ -14,6 +14,7 @@ public:
     std::string message; // request for HTTPRequest and response for HTTPResponse
     std::string http_version;
     std::map<std::string, std::string> headers;
+    std::string status_code;
     std::string body;
 
     void printHeaders();

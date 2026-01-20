@@ -1,5 +1,4 @@
 #include "http_server.hpp"
-#include "logger.hpp"
 
 using namespace std;
 

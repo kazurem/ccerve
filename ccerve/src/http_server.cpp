@@ -1,4 +1,7 @@
 #include "http_server.hpp"
+#include <spdlog/common.h>
+#include <spdlog/sinks/base_sink.h>
+#include <spdlog/sinks/sink.h>
 
 namespace http
 {
@@ -8,8 +11,14 @@ namespace http
         this->port = port;
 
         socket_address_length = sizeof(socket_address);
+        
+        //File and Console Loggers
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("cerve-logs/cerve-log.txt", true);
+        std::vector<spdlog::sink_ptr> sinks{console_sink, file_sink}; //there has to be a better way?
+        this->logger = std::make_shared<spdlog::logger>("cerve_logger", begin(sinks), end(sinks));
+        spdlog::register_logger(logger);
 
-        logger = new Logger("./log.txt", log_to_file);
 
         // initializing the sockaddr_in struct
         socket_address.sin_family = AF_INET;
@@ -30,7 +39,7 @@ namespace http
         socket_file_descriptor = socket(AF_INET, SOCK_STREAM, 0);
         if (socket_file_descriptor < 0)
         {
-            (*logger).log("Socket creation failed!");
+            logger->error("Socket creation failed!");
             close(socket_file_descriptor);
             exit(EXIT_FAILURE);
         }
@@ -38,10 +47,7 @@ namespace http
         // bind the socket to the address
         if (bind(socket_file_descriptor, (sockaddr *)&socket_address, socket_address_length) < 0)
         {
-            std::ostringstream osstr;
-            osstr << "Socket could not be bound to ADDRESS " << inet_ntoa(socket_address.sin_addr) << " on PORT " << ntohs(socket_address.sin_port);
-            (*logger).log(osstr.str());
-
+            logger->error("Socket could not be bound to ADDRESS {} on PORT {}", inet_ntoa(socket_address.sin_addr), ntohs(socket_address.sin_port));
             close(socket_file_descriptor);
             exit(EXIT_FAILURE);
         }
@@ -58,14 +64,12 @@ namespace http
     void HTTPServer::startListeningSession()
     {
         // Log server start message
-        std::ostringstream osstr;
-        osstr << "Starting listening session at address " << inet_ntoa(socket_address.sin_addr) << " on port " << ntohs(socket_address.sin_port) << " (http://" << inet_ntoa(socket_address.sin_addr) << ":" << ntohs(socket_address.sin_port) << "/)";
-        (*logger).log(osstr.str());
+        logger->info("Starting listening sessions at address {} on port {} (https://{}:{}/)", inet_ntoa(socket_address.sin_addr), ntohs(socket_address.sin_port), inet_ntoa(socket_address.sin_addr),  ntohs(socket_address.sin_port));
 
         // listen
         if (listen(socket_file_descriptor, 100) < 0)
         {
-            (*logger).log("Socket was not able to start listening!");
+            logger->error("Socket was not able to start listening!");
             close(socket_file_descriptor);
             exit(EXIT_FAILURE);
         }
@@ -79,7 +83,7 @@ namespace http
             bytes_received = read(new_socket_file_descriptor, buffer, BUFFER_SIZE);
             if (bytes_received < 0)
             {
-                (*logger).log("Socket was not able to read data!");
+                logger->error("Socket was not able to read data!");
                 close(socket_file_descriptor);
                 close(new_socket_file_descriptor);
                 exit(EXIT_FAILURE);
@@ -91,7 +95,8 @@ namespace http
 
             std::string resp = response.constructResponse(http_response_info);
 
-            sendResponse(resp, client_addr, (req_handler.method + " " + req_handler.resource_path + " " + req_handler.http_version));
+            if(response.status_code == "404") logger->warn("File not found (Status Code 404)");
+            sendResponse(resp, client_addr, (req_handler.method + " " + req_handler.resource_path + " " + req_handler.http_version + " " + response.status_code));
 
             close(new_socket_file_descriptor);
         }
@@ -108,7 +113,7 @@ namespace http
         //check if connection was able to be accepted or not
         if (new_socket_fd < 0)
         {
-            (*logger).log("Socket was not able to accept the connection!");
+            logger->error("Socket was not able to accept the connection!");
             close(socket_file_descriptor);
             close(new_socket_file_descriptor);
             exit(EXIT_FAILURE);
@@ -122,18 +127,18 @@ namespace http
     {
         //this is the response built by the buildRespons method of the HTTPResponse class
         server_message = response;
-
+  
         int bytes_sent = write(new_socket_file_descriptor, server_message.c_str(), server_message.size());
 
         //check if the whole message was able to be sent or not
         if ((size_t)bytes_sent != server_message.size())
         {
-            (*logger).log("Socket was not able to send data!");
+            logger->error("Socket was not able to send data!");
             close(socket_file_descriptor);
             close(new_socket_file_descriptor);
             exit(EXIT_FAILURE);
         }
 
-        (*logger).log(std::string(inet_ntoa(client_addr)) + " -- " + status_line + " -- ");
+        logger->info("{} -- {}", std::string(inet_ntoa(client_addr)), status_line);
     }
 }
