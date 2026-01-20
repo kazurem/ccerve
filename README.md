@@ -1,32 +1,38 @@
-# HTTP-Server
+# ccerve
 
 ## Introduction:
-
+A HTTP server written from scratch in C++.
 
 ## How to run:
+
 First, get the copy of the repo into your local machine:  
-```
-git clone https://github.com/kazurem/HTTP-Server-in-CPP
+```bash
+git clone https://github.com/kazurem/ccerve
 ```
   
 Then go into the main directory:
-```
-cd ./HTTP-Server-in-CPP
+```bash
+cd ./ccerve
 ```
 
-Run "make" to compile the program and produce the executable:
+Run the following command to configure the build directory (named 'build'):
+```bash
+meson setup build
 ```
-make
+
+Build the configured project
+```bash
+meson compile -C build
 ```
-Run the executable.  
-Format:  
-```
-./http-server ip_address port
+The server executable would now be in the _build_ directory.
+```bash
+#Format
+./build/http-server ip_address port
 ```
   
 Example:
 ```
-./http-server 127.0.0.1 8000
+./build/http-server 127.0.0.1 8000
 ```
 
 ## How to contribute:
@@ -45,7 +51,7 @@ Example:
 If I have extra time then I will also do:
 1. Implement HTTPS for security
 2. Implement Asynchronous I/O
-3. Basic GUI  
+3. Basic GUI
 ## Resources used to learn:
 https://osasazamegbe.medium.com/showing-building-an-http-server-from-scratch-in-c-2da7c0db6cb7  
 https://www.tutorialspoint.com/http/index.htm  
