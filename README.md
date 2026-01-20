@@ -1,6 +1,6 @@
 # ccerve
 
-A HTTP server written from scratch in C++.
+An HTTP server written from scratch in C++.
 
 ### How to run:
 
@@ -32,7 +32,7 @@ The server executable would now be in the _build_ directory.
 If you run the executable without the `ipaddress` and `port` arguments, it will resort to the defaults which are `127.0.0.1` and `8000`.
 
 **Example**
-```
+```bash
 ./build/cerve 127.0.0.1 6666
 ```
 
