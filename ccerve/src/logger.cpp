@@ -1,4 +1,4 @@
-#include "logger.h"
+#include "logger.hpp"
 
 Logger::Logger(std::string file_path, bool log_to_file)
 {

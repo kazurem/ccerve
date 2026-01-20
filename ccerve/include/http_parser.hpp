@@ -6,8 +6,7 @@
 #include <map>
 #include <filesystem> //this is a c++17 library so the whole program wont compile on older c++ versions. (note to self: try to remove this)
 
-#include "GLOBAL.h"
-#include "utils.h"
+#include "GLOBAL.hpp"
 
 class HTTPMessage
 {

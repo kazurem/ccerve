@@ -6,8 +6,8 @@
 #include <unistd.h>
 #include <sstream>
 #include <array>
-#include "logger.h"
-#include "http_parser.h"
+#include "logger.hpp"
+#include "http_parser.hpp"
 
 namespace http
 {
