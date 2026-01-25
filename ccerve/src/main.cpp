@@ -18,7 +18,7 @@ AFTER:
 8. create a map of values in server_config.txt and then use that to do assigning
 9. When accessing a non available file, sometimes I get gibberish data instead of not found page
 - Make a dedicated not found page [optional]
--I encountered a "socket was not able to send data" error.I couldnt replicate it.
+- I encountered a "socket was not able to send data" error. I couldnt replicate it.
 */
 
 int main(int argc, char *argv[])

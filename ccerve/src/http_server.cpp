@@ -1,4 +1,6 @@
 #include "http_server.hpp"
+#include <string>
+#include <winsock2.h>
 
 namespace http
 {
@@ -15,7 +17,11 @@ namespace http
         socket_address.sin_family = AF_INET;
         socket_address.sin_port = htons(this->port);
         socket_address.sin_addr.s_addr = inet_addr(ip_address.c_str());
-        createAndBindSocket();
+
+		sockInit();
+
+        createSocket();
+		bindSocket();
     }
     
     HTTPServer::~HTTPServer()
@@ -23,35 +29,74 @@ namespace http
         stopListeningSession();
     }
 
-    //creates and binds socket
-    void HTTPServer::createAndBindSocket()
-    {
-        // creating the socket
-        socket_file_descriptor = socket(AF_INET, SOCK_STREAM, 0);
-        if (socket_file_descriptor < 0)
-        {
-            (*logger).log("Socket creation failed!");
-            close(socket_file_descriptor);
-            exit(EXIT_FAILURE);
-        }
+    // Source - https://stackoverflow.com/a
+    // Posted by user4200092, modified by community. See post 'Timeline' for
+    // change history Retrieved 2026-01-25, License - CC BY-SA 3.0
 
-        // bind the socket to the address
-        if (bind(socket_file_descriptor, (sockaddr *)&socket_address, socket_address_length) < 0)
-        {
-            std::ostringstream osstr;
-            osstr << "Socket could not be bound to ADDRESS " << inet_ntoa(socket_address.sin_addr) << " on PORT " << ntohs(socket_address.sin_port);
-            (*logger).log(osstr.str());
+	int HTTPServer::sockInit(void) {
+		#ifdef _WIN32
+			WSADATA wsa_data;
+			return WSAStartup(MAKEWORD(1, 1), &wsa_data);
+		#else
+			return 0;
+		#endif
+	}
 
-            close(socket_file_descriptor);
-            exit(EXIT_FAILURE);
-        }
+	int HTTPServer::sockQuit(void) {
+		#ifdef _WIN32
+			return WSACleanup();
+		#else
+			return 0;
+		#endif
     }
-    
+
+    int HTTPServer::closeSocket(SOCKET sock) {
+		int status = 0;
+
+		#ifdef _WIN32
+		status = shutdown(sock, SD_BOTH);
+		if (status == 0) {
+			status = closesocket(sock);
+		}
+		#else
+			status = shutdown(sock, SHUT_RDWR);
+			if (status == 0) {
+				status = close(sock);
+			}
+		#endif
+
+		return status;
+	}
+
+	void HTTPServer::createSocket() {
+		socket_file_descriptor = socket(AF_INET, SOCK_STREAM, 0);
+		if (IS_SOCK_INVALID(socket_file_descriptor)) {
+			(*logger).log("Socket creation failed!");
+			closeSocket(socket_file_descriptor);
+			exit(EXIT_FAILURE);
+		}
+    }
+
+	void HTTPServer::bindSocket() {
+		if (bind(socket_file_descriptor, (sockaddr *)&socket_address,
+				socket_address_length) < 0) {
+			std::ostringstream osstr;
+			osstr << "Socket could not be bound to ADDRESS "
+					<< inet_ntoa(socket_address.sin_addr) << " on PORT "
+					<< ntohs(socket_address.sin_port);
+			(*logger).log(osstr.str());
+
+			closeSocket(socket_file_descriptor);
+			exit(EXIT_FAILURE);
+		}
+    }
+
     //closing socket file descriptors
     void HTTPServer::stopListeningSession()
     {
-        close(socket_file_descriptor);
-        close(new_socket_file_descriptor);
+        closeSocket(socket_file_descriptor);
+        closeSocket(new_socket_file_descriptor);
+		sockQuit();
         exit(EXIT_SUCCESS);
     }
 
@@ -66,7 +111,7 @@ namespace http
         if (listen(socket_file_descriptor, 100) < 0)
         {
             (*logger).log("Socket was not able to start listening!");
-            close(socket_file_descriptor);
+            closeSocket(socket_file_descriptor);
             exit(EXIT_FAILURE);
         }
 
@@ -76,12 +121,12 @@ namespace http
         {
             const in_addr client_addr = acceptConnection(new_socket_file_descriptor);
             char buffer[BUFFER_SIZE] = {0};
-            bytes_received = read(new_socket_file_descriptor, buffer, BUFFER_SIZE);
+            bytes_received = recv(new_socket_file_descriptor, buffer, BUFFER_SIZE, 0);
             if (bytes_received < 0)
             {
                 (*logger).log("Socket was not able to read data!");
-                close(socket_file_descriptor);
-                close(new_socket_file_descriptor);
+                closeSocket(socket_file_descriptor);
+                closeSocket(new_socket_file_descriptor);
                 exit(EXIT_FAILURE);
             }
 
@@ -93,7 +138,7 @@ namespace http
 
             sendResponse(resp, client_addr, (req_handler.method + " " + req_handler.resource_path + " " + req_handler.http_version));
 
-            close(new_socket_file_descriptor);
+            closeSocket(new_socket_file_descriptor);
         }
     }
     
@@ -106,12 +151,11 @@ namespace http
         new_socket_fd = accept(socket_file_descriptor, (sockaddr *)&client_addr, &client_addr_length);
 
         //check if connection was able to be accepted or not
-        if (new_socket_fd < 0)
-        {
-            (*logger).log("Socket was not able to accept the connection!");
-            close(socket_file_descriptor);
-            close(new_socket_file_descriptor);
-            exit(EXIT_FAILURE);
+        if (IS_SOCK_INVALID(new_socket_fd)) {
+          (*logger).log("Socket was not able to accept the connection!");
+          closeSocket(socket_file_descriptor);
+          closeSocket(new_socket_file_descriptor);
+          exit(EXIT_FAILURE);
         }
 
         //return the client address (for log messages later)
@@ -123,14 +167,14 @@ namespace http
         //this is the response built by the buildRespons method of the HTTPResponse class
         server_message = response;
 
-        int bytes_sent = write(new_socket_file_descriptor, server_message.c_str(), server_message.size());
+        int bytes_sent = send(new_socket_file_descriptor, server_message.c_str(), server_message.size(), 0);
 
         //check if the whole message was able to be sent or not
         if ((size_t)bytes_sent != server_message.size())
         {
             (*logger).log("Socket was not able to send data!");
-            close(socket_file_descriptor);
-            close(new_socket_file_descriptor);
+            closeSocket(socket_file_descriptor);
+            closeSocket(new_socket_file_descriptor);
             exit(EXIT_FAILURE);
         }
 
