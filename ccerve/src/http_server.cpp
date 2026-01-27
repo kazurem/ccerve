@@ -1,5 +1,4 @@
 #include "http_server.hpp"
-#include "http_parser.hpp"
 
 namespace http
 {
@@ -93,9 +92,7 @@ namespace http
             }
 
             HeaderMap header_map;
-            handleRequest(header_map, static_cast<std::string>(buffer));
-
-            std::string resp = constructResponse(header_map);
+            std::string resp = handleRequest(header_map, static_cast<std::string>(buffer));
 
             sendResponse(resp, client_addr, (header_map["method"] + " " + header_map["resource-path"] + " " + header_map["http-version"]));
 
@@ -124,15 +121,12 @@ namespace http
         return client_addr.sin_addr;
     }
     
-    void HTTPServer::sendResponse(std::string response, in_addr client_addr, std::string status_line)
+    void HTTPServer::sendResponse(const std::string& response, const in_addr& client_addr, const std::string& status_line)
     {
-        //this is the response built by the buildRespons method of the HTTPResponse class
-        server_message = response;
-
-        int bytes_sent = write(client_sock_fd, server_message.c_str(), server_message.size());
+        int bytes_sent = write(client_sock_fd, response.c_str(), response.size());
 
         //check if the whole message was able to be sent or not
-        if ((size_t)bytes_sent != server_message.size())
+        if (static_cast<size_t>(bytes_sent) != response.size())
         {
             (*logger).log("Socket was not able to send data!");
             closeSocket(server_sock_fd);

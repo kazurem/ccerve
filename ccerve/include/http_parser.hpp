@@ -1,56 +1,34 @@
 #pragma once
+/**
+* @file Header file containing declarations of HTTP parsing functions
+*/
+
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include <vector>
 #include <map>
-#include <filesystem> //this is a c++17 library so the whole program wont compile on older c++ versions. (note to self: try to remove this)
+#include <filesystem>
 
 #include "GLOBAL.hpp"
-
-/**
------------------------------ FUNCTIONS FOR PARSING HTTP MESSAGES -----------------------------
-*/
 
 using HeaderMap = std::map<std::string, std::string>;
 
 /**
-* @brief construct a HTTP Response
-* @param header_map (HeaderMap) Map consisting of keys (HTTP Headers) and values (Header values)
-* @return HTTP response in the form of std::string
+* @brief Fills the map with key-value (header: value) pairs that are present in the HTTP message
+* @param header_map (HeaderMap&) 
+* @param message (std::string) HTTP message
 */
-auto constructResponse(HeaderMap& header_map) -> std::string;
-
-
-auto parseRequest(HeaderMap& header_map, const std::string& message) -> void;
+auto parseMessage(HeaderMap& header_map, const std::string& message) -> void;
 
 /**
-* @brief Reads file data and puts it into the given variable (body) (by reference)
-* @param header_map (HeaderMap) 
-* @param read_mode For binary read mode or text read mode
-* @return whether the operation was successful(0) or not(1).
+* @brief  Fills the map with request headers + response headers. The response
+* headers are filled by calling appropriate functions that query for resources asked for in the request. The key difference in this function and the parseMessage() function is that this assumes that the message is a HTTP Request.
+* @param  header_map (HeaderMap&).
+* @param  message HTTP request
+* @return response (std::string) HTTP response
 */
-auto getFileData(HeaderMap& header_map, std::ios::openmode read_mode) -> int;
-
-/**
-* @brief fills the content-type header of the header_map
-* @param  header_map (HeaderMap).
-*/
-auto getContentType(HeaderMap& header_map) -> void;
-
-/**
-* @brief fills the content-type header of the header_map
-* @param  header_map (HeaderMap).
-*/
-auto readResource(HeaderMap& header_map) -> int;
-
-/**
-* @brief fills the content-type header of the header_map
-* @param  header_map (HeaderMap).
-* @param  read_status (int)
-*/
-auto fillHTTPResponseInfo(HeaderMap& header_map, int read_status) -> void;
-
-auto handleRequest(HeaderMap& header_map, const std::string& message) -> void;
+auto handleRequest(HeaderMap& header_map, const std::string& http_request) -> std::string;
 
 auto printHeaderMap(const HeaderMap& header_map) -> void;
+
+auto printHeaderKeys(const HeaderMap& header_map) -> void;

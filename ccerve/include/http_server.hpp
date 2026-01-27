@@ -26,10 +26,10 @@ namespace http
         unsigned int server_sock_addr_len;
         
         static const int BUFFER_SIZE = 30760;
-        std::string server_message;
+        std::string response;
 
         in_addr acceptConnection(int &new_socket_fd);
-        void sendResponse(std::string response, const in_addr client_addr, std::string status_line);
+        void sendResponse(const std::string& response, const in_addr& client_addr, const std::string& status_line);
         void createServerSocket();
         void bindServerSocket();
 

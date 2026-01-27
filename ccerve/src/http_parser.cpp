@@ -1,56 +1,16 @@
+/**
+* @file Implementation file containing definitions of HTTP parsing functions
+*/
+
 #include "http_parser.hpp"
 
-auto constructResponse(HeaderMap& header_map) -> std::string {
-    std::string response = "";
-    response += header_map["http-version"] + " ";
-    response += header_map["status-code"] + " ";
-    response += header_map["reason-phrase"] + "\r\n";
-    response += header_map["content-type"] + "\r\n\r\n";
-
-    response += header_map["body"];
-
-    return response;
-}
-
-auto parseRequest(HeaderMap& header_map, const std::string& message) -> void
-{
-    std::istringstream request_message_stream(message);
-
-    request_message_stream >> header_map["method"] >> header_map["resource-path"] >> header_map["http-version"];
-    header_map["resource-path"] = "." + header_map["resource-path"]; // resource_path by default is "/x/y/..../z.ext". convert it to "./x/y/.../z.ext"
-
-    // serve index.html if no resource is specified
-    if (header_map["resource-path"] == "./" || header_map["resource-path"] == "")
-    {
-        header_map["resource-path"] = "./index.html";
-        header_map["content-type"] = "text/html";
-    }
-
-    std::string header_line;
-
-    while (std::getline(request_message_stream, header_line))
-    {
-        // Ignore empty lines (end of headers)
-        if (header_line.empty())
-            continue;
-
-        // Find the position of the first colon
-        size_t colon_pos = header_line.find(':');
-        if (colon_pos != std::string::npos)
-        {
-            std::string header_name = header_line.substr(0, colon_pos);
-            std::string header_value = header_line.substr(colon_pos + 1);
-
-            // Trim leading spaces in header value
-            header_value.erase(0, header_value.find_first_not_of(" \t"));
-
-            // Insert into map
-            header_map[header_name] = header_value;
-        }
-    }
-}
-
-auto getFileData(HeaderMap& header_map, std::ios::openmode read_mode) -> int
+/**
+* @brief Reads file data and puts it into the given variable (body)
+* @param header_map (HeaderMap&) 
+* @param read_mode For binary read mode or text read mode
+* @return whether the operation was successful(0) or not(1).
+*/
+static auto getFileData(HeaderMap& header_map, std::ios::openmode read_mode) -> int
 {
     std::ifstream file(header_map["resource-path"], read_mode);
 
@@ -73,7 +33,11 @@ auto getFileData(HeaderMap& header_map, std::ios::openmode read_mode) -> int
     return EXIT_FAILURE;
 }
 
-void getContentType(HeaderMap& header_map)
+/**
+* @brief fills the content-type header of the header_map
+* @param  header_map (HeaderMap&).
+*/
+static void getContentType(HeaderMap& header_map)
 {
     std::filesystem::path resrc_path(header_map["resource-path"]);
     header_map["content-type"] = resrc_path.extension().string();
@@ -106,7 +70,11 @@ void getContentType(HeaderMap& header_map)
     }
 }
 
-int readResource(HeaderMap& header_map)
+/**
+* @brief fills the content-type header of the header_map
+* @param  header_map (HeaderMap&).
+*/
+static int readResource(HeaderMap& header_map)
 {
     int read_status;
 
@@ -125,7 +93,12 @@ int readResource(HeaderMap& header_map)
     return read_status;
 }
 
-auto fillHTTPResponseInfo(HeaderMap& header_map, int read_status) -> void
+/**
+* @brief fills the content-type header of the header_map
+* @param  header_map (HeaderMap&).
+* @param  read_status (int)
+*/
+static auto fillHTTPResponseInfo(HeaderMap& header_map, int read_status) -> void
 {
     if (read_status == EXIT_FAILURE)
     {
@@ -149,9 +122,65 @@ auto fillHTTPResponseInfo(HeaderMap& header_map, int read_status) -> void
     }
 }
 
-auto handleRequest(HeaderMap& header_map, const std::string& message) -> void
+/**
+* @brief Construct a HTTP Response
+* @param header_map (HeaderMap&)
+* @return HTTP response in the form of std::string
+*/
+static auto constructResponse(HeaderMap& header_map) -> std::string {
+    std::string response = "";
+    response += header_map["http-version"] + " ";
+    response += header_map["status-code"] + " ";
+    response += header_map["reason-phrase"] + "\r\n";
+    response += header_map["content-type"] + "\r\n\r\n";
+
+    response += header_map["body"];
+
+    return response;
+}
+
+auto parseRequest(HeaderMap& header_map, const std::string& message) -> void
 {
-    parseRequest(header_map, message);
+    std::istringstream request_message_stream(message);
+
+    request_message_stream >> header_map["method"] >> header_map["resource-path"] >> header_map["http-version"];
+    header_map["resource-path"] = "." + header_map["resource-path"]; // resource_path by default is "/x/y/..../z.ext". convert it to "./x/y/.../z.ext"
+
+    // * TODO: Display the directory if the file is not specified
+    // serve index.html if no resource is specified
+    if (header_map["resource-path"] == "./" || header_map["resource-path"] == "")
+    {
+        header_map["resource-path"] = "./index.html";
+        header_map["content-type"] = "text/html";
+    }
+
+    std::string header_line;
+
+    while (std::getline(request_message_stream, header_line))
+    {
+        // Ignore empty lines (end of headers)
+        if (header_line.empty())
+            continue;
+
+        // Find the position of the first colon
+        size_t colon_pos = header_line.find(':');
+        if (colon_pos != std::string::npos)
+        {
+            std::string header_name = header_line.substr(0, colon_pos);
+            std::string header_value = header_line.substr(colon_pos + 1);
+
+            // Trim leading spaces in header value
+            header_value.erase(0, header_value.find_first_not_of(" \t"));
+
+            // Insert into map
+            header_map[header_name] = header_value;
+        }
+    }
+}
+
+auto handleRequest(HeaderMap& header_map, const std::string& http_request) -> std::string
+{
+    parseRequest(header_map, http_request);
     getContentType(header_map);
 
     for (int i = 0; i < TOTAL_CONTENT_TYPES; i++) // ? move the content_type check into for loop?
@@ -167,10 +196,17 @@ auto handleRequest(HeaderMap& header_map, const std::string& message) -> void
         //could add further else if statements to incorporate other HTTP methods like PUT, POST
     }
     fillHTTPResponseInfo(header_map, EXIT_SUCCESS);
+    return constructResponse(header_map);
 }
 
 auto printHeaderMap(const HeaderMap& header_map) -> void {
     for(const auto& [key, value] : header_map) {
         std::cout << key << ": " << value << "\n";
     }
+}
+
+auto printHeaderKeys(const HeaderMap& header_map) -> void {
+    for(const auto& [key, value] : header_map) {
+        std::cout << key << "\n";
+    }  
 }
