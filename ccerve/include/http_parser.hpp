@@ -8,45 +8,48 @@
 
 #include "GLOBAL.hpp"
 
-class HTTPMessage
-{
-public:
-    std::string message; // request for HTTPRequest and response for HTTPResponse
-    std::string http_version;
-    std::map<std::string, std::string> headers;
-    std::string body;
+/**
+----------------------------- FUNCTIONS FOR PARSING HTTP MESSAGES -----------------------------
+*/
 
-    void printHeaders();
-};
+using HeaderMap = std::map<std::string, std::string>;
 
-class HTTPRequest : public HTTPMessage
-{
-public:
-    std::string method;
-    std::string resource_path;
-    std::string content_type;
-    std::string content_type_status;
+/**
+* @brief construct a HTTP Response
+* @param header_map (HeaderMap) Map consisting of keys (HTTP Headers) and values (Header values)
+* @return HTTP response in the form of std::string
+*/
+static auto constructResponse(HeaderMap& header_map) -> std::string;
 
-    std::map<std::string, std::string> handleRequest();
+static auto parseRequest(HeaderMap& header_map, const std::string& message) -> void;
 
-    void setRequest(std::string request);
-    std::string getRequest();
+/**
+* @brief Reads file data and puts it into the given variable (body) (by reference)
+* @param header_map (HeaderMap) 
+* @param read_mode For binary read mode or text read mode
+* @return whether the operation was successful(0) or not(1).
+*/
+static auto getFileData(HeaderMap& header_map, std::ios::openmode read_mode) -> int;
 
-private:
-    void setHTTPResponseInfo(std::map<std::string, std::string> &info_for_response_construction, const int file_data_read_operation_status);
-    void parseRequest();
-    void getContentType();
-    // read_mode: 1 for binary read and 0 for normal text read
-    int getFileData(std::ios::openmode read_mode);
-    int readDataOfResourcetoBody(std::map<std::string, std::string> &info_for_response_construction);
-};
+/**
+* @brief fills the content-type header of the header_map
+* @param  header_map (HeaderMap).
+*/
+static auto getContentType(HeaderMap& header_map) -> void;
 
-class HTTPResponse : public HTTPMessage
-{
-public:
-    std::string status_code;
-    std::string reason_phrase;
-    
-    std::string parseResponse(std::string response);
-    std::string constructResponse(std::map<std::string, std::string> info_for_response_construction);
-};
+/**
+* @brief fills the content-type header of the header_map
+* @param  header_map (HeaderMap).
+*/
+static auto readResource(HeaderMap& header_map) -> int;
+
+/**
+* @brief fills the content-type header of the header_map
+* @param  header_map (HeaderMap).
+* @param  read_status (int)
+*/
+static auto fillHTTPResponseInfo(HeaderMap& header_map, int read_status) -> void;
+
+static auto handleRequest(HeaderMap& header_map, const std::string& message) -> void;
+
+static auto printHeaderMap(const HeaderMap& header_map) -> void;
