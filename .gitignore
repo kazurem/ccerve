@@ -1,8 +1,3 @@
-a.out
-http-server
-test.cpp
-test
+build/
+.cache/
 log.txt
-index.html
-style.css
-stanford-image.webp

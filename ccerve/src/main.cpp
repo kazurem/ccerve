@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    http::HTTPServer server(ip_address, port);
+    HTTPServer server(ip_address, port);
     server.startListeningSession();
     return 0;
 }
