@@ -93,7 +93,6 @@ void HTTPServer::startListeningSession()
         http::HeaderMap header_map;
         std::string resp = http::handleRequest(header_map, static_cast<std::string>(buffer));
 
-        http::printHeaderMap(header_map);
         sendResponse(resp, client_addr, (header_map["method"] + " " + header_map["resource-path"] + " " + header_map["http-version"]));
 
         closeSocket(client_sock_fd);
