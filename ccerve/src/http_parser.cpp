@@ -1,6 +1,6 @@
 #include "http_parser.hpp"
 
-static auto constructResponse(HeaderMap& header_map) -> std::string {
+auto constructResponse(HeaderMap& header_map) -> std::string {
     std::string response = "";
     response += header_map["http-version"] + " ";
     response += header_map["status-code"] + " ";
@@ -12,7 +12,7 @@ static auto constructResponse(HeaderMap& header_map) -> std::string {
     return response;
 }
 
-static auto parseRequest(HeaderMap& header_map, const std::string& message) -> void
+auto parseRequest(HeaderMap& header_map, const std::string& message) -> void
 {
     std::istringstream request_message_stream(message);
 
@@ -50,7 +50,7 @@ static auto parseRequest(HeaderMap& header_map, const std::string& message) -> v
     }
 }
 
-static auto getFileData(HeaderMap& header_map, std::ios::openmode read_mode) -> int
+auto getFileData(HeaderMap& header_map, std::ios::openmode read_mode) -> int
 {
     std::ifstream file(header_map["resource-path"], read_mode);
 
@@ -73,7 +73,7 @@ static auto getFileData(HeaderMap& header_map, std::ios::openmode read_mode) -> 
     return EXIT_FAILURE;
 }
 
-static void getContentType(HeaderMap& header_map)
+void getContentType(HeaderMap& header_map)
 {
     std::filesystem::path resrc_path(header_map["resource-path"]);
     header_map["content-type"] = resrc_path.extension().string();
@@ -106,7 +106,7 @@ static void getContentType(HeaderMap& header_map)
     }
 }
 
-static int readResource(HeaderMap& header_map)
+int readResource(HeaderMap& header_map)
 {
     int read_status;
 
@@ -125,7 +125,7 @@ static int readResource(HeaderMap& header_map)
     return read_status;
 }
 
-static auto fillHTTPResponseInfo(HeaderMap& header_map, int read_status) -> void
+auto fillHTTPResponseInfo(HeaderMap& header_map, int read_status) -> void
 {
     if (read_status == EXIT_FAILURE)
     {
@@ -149,7 +149,7 @@ static auto fillHTTPResponseInfo(HeaderMap& header_map, int read_status) -> void
     }
 }
 
-static auto handleRequest(HeaderMap& header_map, const std::string& message) -> void
+auto handleRequest(HeaderMap& header_map, const std::string& message) -> void
 {
     parseRequest(header_map, message);
     getContentType(header_map);
@@ -169,7 +169,7 @@ static auto handleRequest(HeaderMap& header_map, const std::string& message) -> 
     fillHTTPResponseInfo(header_map, EXIT_SUCCESS);
 }
 
-static auto printHeaderMap(const HeaderMap& header_map) -> void {
+auto printHeaderMap(const HeaderMap& header_map) -> void {
     for(const auto& [key, value] : header_map) {
         std::cout << key << ": " << value << "\n";
     }
