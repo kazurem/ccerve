@@ -3,6 +3,7 @@
 */
 
 #include "http_parser.hpp"
+#include <string>
 
 namespace http {
 
@@ -136,8 +137,8 @@ namespace http {
         response += header_map["http-version"] + " ";
         response += header_map["status-code"] + " ";
         response += header_map["reason-phrase"] + "\r\n";
-        response += header_map["content-type"] + "\r\n\r\n";
-
+        response += "Content-Type: " + header_map["content-type"] + "\r\n";
+        response += "Content-Length: " + std::to_string(header_map["body"].length()) + "\r\n\r\n";
         response += header_map["body"];
 
         return response;
