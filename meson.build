@@ -1,4 +1,4 @@
-project('ccerve', 'cpp')
+project('ccerve', 'cpp', default_options : ['cpp_std=c++23'])
 project_description = 'HTTP Server written from scratch in C++'
 
 subdir('ccerve')

@@ -1,6 +1,7 @@
 #include "http_server.hpp"
 #include "http_parser.hpp"
 
+
 HTTPServer::HTTPServer(std::string ip_address, int port, std::string file_to_read, bool log_to_file)
 {
     this->ip_address = ip_address;
@@ -8,7 +9,9 @@ HTTPServer::HTTPServer(std::string ip_address, int port, std::string file_to_rea
 
     server_sock_addr_len = sizeof(server_sock_addr);
 
-    logger = new Logger("./log.txt", log_to_file);
+    logger = getDefaultLogger();
+    auto file_sink = std::make_shared<FileSink>("log/log.txt");
+    logger->addSink(file_sink);
 
     // initializing the sockaddr_in struct
     server_sock_addr.sin_family = AF_INET;
@@ -27,7 +30,7 @@ void HTTPServer::createServerSocket() {
     server_sock_fd = createSocket(AF_INET, SOCK_STREAM, 0);
     if (server_sock_fd < 0)
     {
-        (*logger).log("Socket creation failed!");
+        error("Socket creation failed!");
         close(server_sock_fd);
         exit(EXIT_FAILURE);
     }
@@ -38,8 +41,7 @@ void HTTPServer::bindServerSocket() {
     {
         std::ostringstream osstr;
         osstr << "Socket could not be bound to ADDRESS " << inet_ntoa(server_sock_addr.sin_addr) << " on PORT " << ntohs(server_sock_addr.sin_port);
-        (*logger).log(osstr.str());
-        
+        error(osstr.str());
         close(server_sock_fd);
         exit(EXIT_FAILURE);
     }
@@ -65,36 +67,45 @@ void HTTPServer::startListeningSession()
     inet_ntoa(server_sock_addr.sin_addr) << 
     ":" << ntohs(server_sock_addr.sin_port) << 
     "/)";
-    (*logger).log(osstr.str());
+    info(osstr.str());
 
     // listen
     if (listen(server_sock_fd, 100) < 0)
     {
-        (*logger).log("Socket was not able to start listening!");
-        closeSocket(server_sock_fd);
-        exit(EXIT_FAILURE);
+        error("Socket was not able to start listening!");
+        stopListeningSession();
     }
-
-    int bytes_received;
 
     while (true)
     {
         const in_addr client_addr = acceptConnection(client_sock_fd);
         char buffer[BUFFER_SIZE] = {0};
-        bytes_received = read(client_sock_fd, buffer, BUFFER_SIZE);
-        if (bytes_received < 0)
-        {
-            (*logger).log("Socket was not able to read data!");
-            closeSocket(server_sock_fd);
-            closeSocket(client_sock_fd);
-            exit(EXIT_FAILURE);
+
+        bool keep_alive = true;
+        while(keep_alive) {
+            // receive request from client
+            int bytes_received = recv(client_sock_fd, buffer, BUFFER_SIZE, 0);
+            if (bytes_received == 0) {
+                // Client closed the connection (Normal)
+                break; 
+            } else if (bytes_received < 0) {
+                error("Socket was not able to read data\n");
+                break;
+            }
+            
+            // handle request 
+            http::HeaderMap header_map;
+            std::string resp = http::handleRequest(header_map, std::string(buffer, bytes_received));
+
+            // send response
+            sendResponse(resp, client_addr, (header_map["method"] + " " + header_map["resource-path"] + " " + header_map["http-version"]));
+
+            // Check for "close" explicitly, otherwise assume keep-alive for HTTP/1.1
+            if (header_map["Connection"].find("close") != std::string::npos) {
+                keep_alive = false;
+            }
         }
-
-        http::HeaderMap header_map;
-        std::string resp = http::handleRequest(header_map, static_cast<std::string>(buffer));
-
-        sendResponse(resp, client_addr, (header_map["method"] + " " + header_map["resource-path"] + " " + header_map["http-version"]));
-
+        shutdown(client_sock_fd, SHUT_WR);
         closeSocket(client_sock_fd);
     }
 }
@@ -110,10 +121,8 @@ in_addr HTTPServer::acceptConnection(int &new_socket_fd)
     //check if connection was able to be accepted or not
     if (new_socket_fd < 0)
     {
-        (*logger).log("Socket was not able to accept the connection!");
-        closeSocket(server_sock_fd);
-        closeSocket(client_sock_fd);
-        exit(EXIT_FAILURE);
+        error("Socket was not able to accept the connection!");
+        stopListeningSession();
     }
 
     //return the client address (for log messages later)
@@ -127,11 +136,9 @@ void HTTPServer::sendResponse(const std::string& response, const in_addr& client
     //check if the whole message was able to be sent or not
     if (static_cast<size_t>(bytes_sent) != response.size())
     {
-        (*logger).log("Socket was not able to send data!");
-        closeSocket(server_sock_fd);
-        closeSocket(client_sock_fd);
-        exit(EXIT_FAILURE);
+        error("Socket was not able to send data!");
+        stopListeningSession();
     }
 
-    (*logger).log(std::string(inet_ntoa(client_addr)) + " -- " + status_line + " -- ");
+    info(std::string(inet_ntoa(client_addr)) + " -- " + status_line + " -- ");
 }

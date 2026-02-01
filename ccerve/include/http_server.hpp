@@ -1,11 +1,12 @@
 #pragma once
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <array>
 
+#include "http_parser.hpp"
 #include "sockets.hpp"
 #include "logger.hpp"
-#include "http_parser.hpp"
 
 class HTTPServer
 {
@@ -23,7 +24,7 @@ private:
     struct sockaddr_in server_sock_addr;
     unsigned int server_sock_addr_len;
     
-    static const int BUFFER_SIZE = 30760;
+    static const int BUFFER_SIZE = 30760; // ! Probably a better way to do this
     std::string response;
 
     in_addr acceptConnection(int &new_socket_fd);
@@ -31,6 +32,6 @@ private:
     void createServerSocket();
     void bindServerSocket();
 
-    Logger *logger;
+    std::shared_ptr<Logger> logger;
 };
 
