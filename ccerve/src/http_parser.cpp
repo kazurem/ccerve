@@ -141,9 +141,7 @@ namespace http {
         response += "Content-Type: " + header_map["content-type"] + "\r\n";
         response += "Content-Length: " + std::to_string(header_map["body"].length()) + "\r\n\r\n";
         response += header_map["body"];
-
     
-        std::cout << response << "\n"; 
         return response;
     }
 

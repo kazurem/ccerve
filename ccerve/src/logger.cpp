@@ -1,5 +1,4 @@
 #include "logger.hpp"
-#include <memory>
 
 void setLogFormat(std::string_view p_NewLogFormat) {
     s_LogFormat = p_NewLogFormat;
@@ -7,33 +6,51 @@ void setLogFormat(std::string_view p_NewLogFormat) {
 
 std::vector<const Logger*> Logger::Loggers = std::vector<const Logger*>();
 
-void Logger::ListLoggers() {
-    for(const auto logger : Loggers) {
-        logger->info(logger->m_LoggerName);
-    }
-    std::cout << "\n";
-}
-
 Logger::Logger(std::string_view p_LoggerName, LOG_LEVEL p_LogLevel, const SinksVector& p_Sinks) {
     m_LoggerName = p_LoggerName;
     m_LogLevel = p_LogLevel;
 
+    m_LogQueue = std::queue<std::string>();
     m_Sinks = p_Sinks; // ! PROBLEMATIC ?
-
+    
     Loggers.push_back(this);
+    m_StopWriteThread = false;
+    m_WriteThread = std::thread([this] { write(); });
 }
 
 Logger::~Logger() {
     Loggers.erase(std::remove(Loggers.begin(), Loggers.end(), this), Loggers.end());
+
+    m_StopWriteThread = true;
+    m_WriteThread.join();
+}
+
+void Logger::write() const {
+    using namespace std::chrono_literals;
+    while(not m_StopWriteThread or not m_LogQueue.empty()) {
+        {
+            std::lock_guard<std::mutex> queue_lock{m_LogQueueMutex};
+            if(not m_LogQueue.empty()) {
+                for(auto& sink : m_Sinks) {
+                    sink->write(m_LogQueue.front()); // ! Multiple front() calls (one for each sink)
+                }
+                m_LogQueue.pop();
+            }
+        }
+        // std::this_thread::sleep_for(5ms);
+    }
 }
 
 void Logger::log(std::string_view p_Msg, LOG_LEVEL p_LogLevel) const {
     if(p_LogLevel < m_LogLevel) return;
+
+    // format msg (seperate the formatting to a function pweese)
     auto time = getCurrentTime();
     auto temp_str = "[" + std::string(time) + "] -  " + "[" + m_LoggerName + "] - " + std::string(p_Msg) + "\n";
-    for(auto& sink : m_Sinks) {
-        sink->write(temp_str);
-    }
+
+    // push to log queue
+    std::lock_guard<std::mutex> queue_lock{m_LogQueueMutex};
+    m_LogQueue.push(temp_str);
 }
 
 using cpp_colors::foreground::green;
@@ -88,7 +105,6 @@ std::string_view Logger::getLoggerName() {
 // @brief A logger is created by default
 static std::shared_ptr<Logger> s_DefaultLogger = std::make_shared<Logger>("Default Logger");
 
-
 void setDefaultLogger(Logger* p_Logger) { 
     s_DefaultLogger.reset(p_Logger);
 }
@@ -109,7 +125,32 @@ void error(std::string_view p_Msg) {
     s_DefaultLogger->error(p_Msg);
 }
 
+// @brief function for testing threading capabilities of logger
+// void f() {
+//     int i;
+//     while(true) {
+//         i = rand() % 1000;
+//         if(i%2 == 0)
+//             info(std::format("thread: {}, i: {}", std::this_thread::get_id(), i));
+//     }
+// }
 
-int main() {
-    info("Hello World");
-}
+// int main() {
+//     auto file_sink = std::make_shared<FileSink>("log.txt");
+//     getDefaultLogger()->addSink(file_sink);
+//     auto log = new Logger("Custom Logger");
+//     log->addSink(file_sink);
+
+//     int i = 0;
+//     while(i != 200) {
+//         i = rand() % 1000;
+//         if(i%2 == 0)
+//                 log->info(std::format(""));
+//     }
+    
+//     std::thread t1(f);
+//     std::thread t2(f);
+//     info("Hello World");
+//     t1.join();
+//     t2.join();
+// }

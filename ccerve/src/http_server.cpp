@@ -42,7 +42,7 @@ void HTTPServer::bindServerSocket() {
         std::ostringstream osstr;
         osstr << "Socket could not be bound to ADDRESS " << inet_ntoa(server_sock_addr.sin_addr) << " on PORT " << ntohs(server_sock_addr.sin_port);
         error(osstr.str());
-        close(server_sock_fd);
+        closeSocket(server_sock_fd);
         exit(EXIT_FAILURE);
     }
 }
@@ -92,7 +92,6 @@ void HTTPServer::startListeningSession()
                 error("Socket was not able to read data\n");
                 break;
             }
-            
             // handle request 
             http::HeaderMap header_map;
             std::string resp = http::handleRequest(header_map, std::string(buffer, bytes_received));
