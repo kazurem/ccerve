@@ -1,7 +1,11 @@
 #pragma once
-#include <iostream>
+#include <atomic>
 #include <memory>
+#include <mutex>
+#include <queue>
 #include <string>
+#include <string_view>
+#include <thread>
 #include <vector>
 
 #include "utils.hpp"
@@ -62,11 +66,14 @@ public:
     std::string_view getLoggerName();
     
 
+    // @brief pops from @var m_LogQueue and writes it to all sinks
+    void write() const;
+
     /**
-    * @brief Write log message to all sinks. 
-    * @param p_Msg message to write
+    * @brief Pushed log message to log queue (thread safe). 
+    * @param p_Msg message to push
     * @param p_LogLevel if the log level of the logger is larger than this,
-    * the message won't be written.
+    * the message won't be pushed.
     */
     void log(std::string_view p_Msg, LOG_LEVEL p_LogLevel) const;
 
@@ -82,12 +89,26 @@ public:
     // @brief List of loggers
     static std::vector<const Logger*> Loggers; // ! PROBLEMATIC?
 
-    // @brief Lists all the active loggers
-    static void ListLoggers();
-
     private:
     // @brief All the sinks that the logger will write to
     SinksVector m_Sinks;
+
+    // @brief Queue to hold logs
+    mutable std::queue<std::string> m_LogQueue;
+    
+    // @brief Mutex to lock operations on log queue
+    mutable std::mutex m_LogQueueMutex;
+
+    /** @brief Thread to write messages to sinks.
+    Note that creating two different file sinks for the same file will result in
+    interleaved text. If you know that two loggers will print to the same file,
+    Make a single file sink shared ptr and provide it to the addSink() function
+    of each logger.
+    */
+    std::thread m_WriteThread;
+
+    // @brief Variable to terminate write thread
+    std::atomic_bool m_StopWriteThread; // ! Does this need to be atomic?
 
     std::string m_LoggerName;
     LOG_LEVEL m_LogLevel;
