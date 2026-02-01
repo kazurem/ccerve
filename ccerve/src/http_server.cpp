@@ -97,13 +97,14 @@ void HTTPServer::startListeningSession()
             std::string resp = http::handleRequest(header_map, std::string(buffer, bytes_received));
 
             // send response
-            sendResponse(resp, client_addr, (header_map["method"] + " " + header_map["resource-path"] + " " + header_map["http-version"]));
+            sendResponse(resp, client_addr, (header_map["method"] + " " + header_map["resource-path"] + " " + header_map["http-version"] + " " + header_map["status-code"]));
 
             // Check for "close" explicitly, otherwise assume keep-alive for HTTP/1.1
             if (header_map["Connection"].find("close") != std::string::npos) {
                 keep_alive = false;
             }
         }
+        
         shutdown(client_sock_fd, SHUT_WR);
         closeSocket(client_sock_fd);
     }
@@ -139,5 +140,5 @@ void HTTPServer::sendResponse(const std::string& response, const in_addr& client
         stopListeningSession();
     }
 
-    info(std::string(inet_ntoa(client_addr)) + " -- " + status_line + " -- ");
+    info(std::string(inet_ntoa(client_addr)) + " -- " + status_line);
 }

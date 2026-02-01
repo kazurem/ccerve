@@ -1,90 +1,73 @@
 #include "logger.hpp"
+#include <mutex>
+#include <thread>
 
-void setLogFormat(std::string_view p_NewLogFormat) {
-    s_LogFormat = p_NewLogFormat;
+std::vector<const Logger*>& Logger::getRegistry() {
+    static std::vector<const Logger*> instances;
+    return instances;
 }
 
-std::vector<const Logger*> Logger::Loggers = std::vector<const Logger*>();
+Logger::Logger(std::string_view p_LoggerName, LOG_LEVEL p_LogLevel, const SinksVector& p_Sinks): m_LoggerName(p_LoggerName), m_LogLevel(p_LogLevel), m_Sinks(p_Sinks), m_LogQueue(), m_StopWriteThread(false) {    
+    if(p_LoggerName == "")
+        m_LoggerName = "Logger" + std::to_string(getRegistry().size());
 
-Logger::Logger(std::string_view p_LoggerName, LOG_LEVEL p_LogLevel, const SinksVector& p_Sinks) {
-    m_LoggerName = p_LoggerName;
-    m_LogLevel = p_LogLevel;
-
-    m_LogQueue = std::queue<std::string>();
-    m_Sinks = p_Sinks; // ! PROBLEMATIC ?
-    
-    Loggers.push_back(this);
-    m_StopWriteThread = false;
+    getRegistry().push_back(this);
     m_WriteThread = std::thread([this] { write(); });
 }
 
 Logger::~Logger() {
-    Loggers.erase(std::remove(Loggers.begin(), Loggers.end(), this), Loggers.end());
+    auto registry = getRegistry();
+    registry.erase(std::remove(registry.begin(), registry.end(), this), registry.end());
 
     m_StopWriteThread = true;
-    m_WriteThread.join();
+    m_CV.notify_one(); // since there will only ever me one write thread
+    if(m_WriteThread.joinable()) // ! I added this check just in case but is it necessary? (When is a thread not joinable?)
+        m_WriteThread.join();
 }
 
 void Logger::write() const {
     using namespace std::chrono_literals;
-    while(not m_StopWriteThread or not m_LogQueue.empty()) {
-        {
-            std::lock_guard<std::mutex> queue_lock{m_LogQueueMutex};
-            if(not m_LogQueue.empty()) {
-                for(auto& sink : m_Sinks) {
-                    sink->write(m_LogQueue.front()); // ! Multiple front() calls (one for each sink)
-                }
-                m_LogQueue.pop();
+    
+    while(true) {
+        std::unique_lock<std::mutex> queue_lock{m_LogQueueMutex};
+
+        /* 
+        The destructor of Logger class will set m_StopWriteThread to true
+        and then call m_CV notify_one(). This will trigger the 
+        lambda function call and check if the condition is true. In this case,
+        condition will be true (m_StopWriteThread = true). The while loop 
+        will empty the remaining elements and then finish the function
+        */
+        m_CV.wait(queue_lock, [this] { // ! is capturing "this" required?
+            return m_StopWriteThread || !m_LogQueue.empty();
+        });
+
+        // Process everything currently in the queue
+        while(!m_LogQueue.empty()) {
+            std::string msg = std::move(m_LogQueue.front());
+            m_LogQueue.pop();
+
+            // This allows the main thread to keep pushing logs while we are doing slow I/O.
+            queue_lock.unlock();
+
+            for(auto& sink : m_Sinks) {
+                sink->write(msg); // ! Multiple front() calls (one for each sink). Is this fine?
             }
+            // std::this_thread::sleep_for(1ms);
+    
+            queue_lock.lock(); // lock again (we are still in while loop)
         }
-        // std::this_thread::sleep_for(5ms);
+
+        // If we reach this point, we have ensured that m_LogQueue is empty
+        if(m_StopWriteThread) break;
+
+        // lock will be released when this scope ends
     }
-}
-
-void Logger::log(std::string_view p_Msg, LOG_LEVEL p_LogLevel) const {
-    if(p_LogLevel < m_LogLevel) return;
-
-    // format msg (seperate the formatting to a function pweese)
-    auto time = getCurrentTime();
-    auto temp_str = "[" + std::string(time) + "] -  " + "[" + m_LoggerName + "] - " + std::string(p_Msg) + "\n";
-
-    // push to log queue
-    std::lock_guard<std::mutex> queue_lock{m_LogQueueMutex};
-    m_LogQueue.push(temp_str);
-}
-
-using cpp_colors::foreground::green;
-using cpp_colors::foreground::yellow;
-using cpp_colors::foreground::red;
-using cpp_colors::style::reset;
-
-#define GREEN(p_Msg) { std::format("{}{}{}", green, p_Msg, reset) }
-#define YELLOW(p_Msg) { std::format("{}{}{}", yellow, p_Msg, reset) }
-#define RED(p_Msg) { std::format("{}{}{}", red, p_Msg, reset) }
-
-void Logger::info(std::string_view p_Msg) const {
-    auto temp_str = "[" + std::string(GREEN("info")) + "] - ";
-    log( temp_str + std::string(p_Msg), LOG_LEVEL::INFO);
-}
-
-void Logger::warn(std::string_view p_Msg) const {
-    auto temp_str = "[" + std::string(YELLOW("warn")) + "] - ";
-    log(temp_str + std::string(p_Msg), LOG_LEVEL::WARN);
-}
-
-void Logger::error(std::string_view p_Msg) const {
-    auto temp_str = "[" + std::string(RED("error")) + "] - ";
-    log(temp_str + std::string(p_Msg), LOG_LEVEL::ERROR);
 }
 
 void Logger::addSink(std::shared_ptr<BaseSink> p_Sink) {
     m_Sinks.push_back(p_Sink);
 }
-
-void Logger::removeSink(std::string_view p_SinkName) {
-    /* Find and remove sink with a given name (NOTE: add names to sinks?)*/
-}
-
 
 void Logger::setLogLevel(LOG_LEVEL p_LogLevel) {
     m_LogLevel = p_LogLevel;
@@ -102,27 +85,13 @@ std::string_view Logger::getLoggerName() {
     return m_LoggerName;
 };
 
-// @brief A logger is created by default
-static std::shared_ptr<Logger> s_DefaultLogger = std::make_shared<Logger>("Default Logger");
+std::shared_ptr<Logger> getDefaultLogger() { 
+    static std::shared_ptr<Logger> DefaultLogger = std::make_shared<Logger>("Default Logger");
+    return DefaultLogger;
+}
 
 void setDefaultLogger(Logger* p_Logger) { 
-    s_DefaultLogger.reset(p_Logger);
-}
-
-std::shared_ptr<Logger> getDefaultLogger() { 
-    return s_DefaultLogger;
-}
-
-void info(std::string_view p_Msg) {
-    s_DefaultLogger->info(p_Msg);
-}
-
-void warn(std::string_view p_Msg) {
-    s_DefaultLogger->warn(p_Msg);
-}
-
-void error(std::string_view p_Msg) {
-    s_DefaultLogger->error(p_Msg);
+    getDefaultLogger().reset(p_Logger);
 }
 
 // @brief function for testing threading capabilities of logger
@@ -145,12 +114,12 @@ void error(std::string_view p_Msg) {
 //     while(i != 200) {
 //         i = rand() % 1000;
 //         if(i%2 == 0)
-//                 log->info(std::format(""));
+//                 log->info("thread: {}, i: {}", std::this_thread::get_id(), i);
 //     }
     
 //     std::thread t1(f);
 //     std::thread t2(f);
-//     info("Hello World");
+//     info("Hello World {}", 1);
 //     t1.join();
 //     t2.join();
 // }

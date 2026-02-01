@@ -8,11 +8,19 @@
 #include <iostream>
 #include <vector>
 
-// Forward declaration of warn method
-void warn(std::string_view p_Msg);
-
 /* @brief Interface Class for all sinks. Sinks are objects to which we 
-   will write our logs to.*/
+   will write our logs to.
+
+   Making this class abstract caused some problems when I tried to 
+   make a vector of base sink shared_ptrs later on. These shared_ptrs
+   were supposed to point to stdout sink and file sinks. The problem is
+   that abstract classes can't be constructed. 
+
+   Solutions I thought of:
+   1. Just make the base class not abstract (I will lose the interface enforcement)
+   2. Make another class which inherit from base class but is not abstract. Name it BaseSinkConstructible.
+   Use this as the type for SinksVector. 
+   */
 class BaseSink {
     public:
         // @brief writes to the appropriate resource
@@ -57,17 +65,4 @@ class FileSink: public BaseSink {
 
         // @brief Mutex to protect file writes
         std::mutex m_FileMutex;
-};
-
-// @brief Exception for when two file sinks point to the same file
-class DuplicateFileSink: public std::exception {
-    public:
-    DuplicateFileSink(const char* p_Msg): m_Msg(p_Msg) {};
-
-    const char* what() const noexcept override {
-        return m_Msg.c_str();
-    }
-
-    private:
-    std::string m_Msg;
 };

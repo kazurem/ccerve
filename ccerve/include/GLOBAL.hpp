@@ -31,6 +31,6 @@ static const std::string RESOURCE_NOT_FOUND_HTML = R"""(
                                                 </head>
                                                 <body>
                                                     <h1>Not Found</h1>
-                                                    <p>The requested URL was not found on this server.</p>
+                                                    <p>The requested resource was not found on this server.</p>
                                                 </body>
                                                 </html>)""";

@@ -15,13 +15,13 @@ namespace http {
     * @param read_mode For binary read mode or text read mode
     * @return whether the operation was successful(0) or not(1).
     */
-    static auto getFileData(HeaderMap& header_map, const std::string& resource_path, std::ios::openmode read_mode) -> int
+    static auto getFileData(HeaderMap& header_map, const std::string& resource_path, std::ios::openmode read_mode) -> bool
     {
         std::ifstream file(resource_path, read_mode);
 
         if (std::filesystem::is_directory(resource_path))
         {
-            return EXIT_FAILURE;
+            return false;
         }
 
         // read all data and store it in body variable
@@ -33,9 +33,9 @@ namespace http {
             header_map["body"] = osstr.str();
 
             file.close();
-            return EXIT_SUCCESS;
+            return true;
         }
-        return EXIT_FAILURE;
+        return false;
     }
 
     /**
@@ -80,9 +80,9 @@ namespace http {
     * @param  header_map (HeaderMap&).
     * @return whether the read operation was successful or not
     */
-    static auto readResource(HeaderMap& header_map, const std::string& resource_path) ->int
+    static auto readResource(HeaderMap& header_map, const std::string& resource_path) -> bool
     {
-        int read_status = 0;
+        bool read_status = false;
 
         // read file data in the appropriate manner according to their extensions e.g binary read for images
         for (int i = 0; i < TOTAL_CONTENT_TYPES; i++)
@@ -90,10 +90,12 @@ namespace http {
             if (header_map["content-type"] == TEXT_CONTENT_TYPES[i])
             {
                 read_status = getFileData(header_map, resource_path, std::ios::in); // read file in normal text mode
+                if(read_status) return read_status;
             }
             else if (header_map["content-type"] == IMAGE_CONTENT_TYPES[i])
             {
                 read_status = getFileData(header_map, resource_path, std::ios::binary); // read file in binary mode
+                if(read_status) return read_status;
             }
         }
         return read_status;
@@ -104,9 +106,9 @@ namespace http {
     * @param  header_map (HeaderMap&).
     * @param  read_status (int) whether the operation of reading the resource asked for was successful or not.
     */
-    static auto fillHTTPResponseInfo(HeaderMap& header_map, int read_status) -> void
+    static auto fillHTTPResponseInfo(HeaderMap& header_map, bool read_status) -> void
     {
-        if (read_status == EXIT_FAILURE)
+        if (read_status == false)
         {
             header_map["status-code"] = "404";
             header_map["reason-phrase"] = "Not Found";
@@ -195,13 +197,13 @@ namespace http {
             {
                 if (header_map["content-type"] == ALL_CONTENT_TYPES[i])
                 {
-                    int file_data_read_operation_status = readResource(header_map, header_map["resource-path"]);
-                    fillHTTPResponseInfo(header_map, file_data_read_operation_status);
+                    bool read_status = readResource(header_map, header_map["resource-path"]);
+                    fillHTTPResponseInfo(header_map, read_status);
                 }
             }
             //could add further else if statements to incorporate other HTTP methods like PUT, POST
         }
-        fillHTTPResponseInfo(header_map, EXIT_SUCCESS);
+
         return constructResponse(header_map);
     }
 
