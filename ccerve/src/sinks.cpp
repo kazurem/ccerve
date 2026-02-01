@@ -12,7 +12,7 @@ FileSink::FileSink(std::string_view p_Path) {
 
     // Prevent creation of a duplicate sink
     if(std::find(FileSinks.begin(), FileSinks.end(), m_FilePath) != FileSinks.end()) {
-        warn(std::format("Two or more file sinks point to the same underlying file '{}'. This will result in interleaved text in the file.", p_Path).c_str());
+        std::cerr << (std::format("Two or more file sinks point to the same underlying file '{}'. This will result in interleaved text in the file.", p_Path).c_str());
     }
     
     // Check if path exists. If it doesn't,create it.
