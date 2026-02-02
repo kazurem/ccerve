@@ -1,62 +1,74 @@
-#include "http_server.hpp"
+/**
+ * @file main.cpp
+ * @brief Entrypoint of the program.
+ * HttpServer instance is created within the main function.
+ */
 
+#include "http_server.hpp"
 using namespace std;
 
-/*
-TODO: 
-URGENT: Refactor(better code structure and design)
 
-AFTER:
-1.if no index.html exists, look for any html file and serve it
-2. adding comments
-3. modify README.md
-4. Learn more about HTTP requests and responses
-5. dip your toes into asynchronous IO
-6. add a command line argument of where you want to run the executable [http-server {path} {ipaddress} {port}]
-7. fix the empty svg response
-8. create a map of values in server_config.txt and then use that to do assigning
-9. When accessing a non available file, sometimes I get gibberish data instead of not found page
-10. Display response code in logs too
-- Make a dedicated not found page [optional]
--I encountered a "socket was not able to send data" error.I couldnt replicate it.
+/*
+TODO:
+
+- if no index.html exists, look for any html file and serve it (DONE)
+
+- adding comments (it's a ongoing journey... and it will remain that way)
+
+- Learn more about HTTP requests and responses
+
+- dip your toes into asynchronous IO
+
+- add a command line argument of where you want to run the executable
+[http-server {path} {ipaddress} {port}]
+
+- fix the empty svg response
+
+- create a map of values in server_config.txt and then use that to do assigning
+
+- Display response code in logs too (DONE)
+
+- If only directory is requested in HTTP request, make a HTML page listing all
+the directory contents (micmicing the behavior of python's http server module)
+
+! NOTE: The code is still uncomplete, unoptimized with possible (most certainly)
+! tremendous amount of bugs
 */
 
-int main(int argc, char *argv[])
-{
-    //default values
+int main (int argc, char* argv[]) {
+    // default values
     std::string ip_address = "127.0.0.1";
-    int port = 8000;
+    int port               = 8000;
 
-    if (argc == 3)
-    {
-        ip_address = argv[1];
-        try
+    try {
+        if (argc == 3) // if ip_address and port both are specified in the
+                       // command (e.g ./cerve 0.0.0.0 10000)
         {
-            port = std::stoi(argv[2]);
-            if (port > 65535)
-            {
-                std::cerr << "Port number must be less than 65,535" << std::endl;
-                exit(EXIT_FAILURE);
+            ip_address = argv[1];
+            port = std::stoi (argv[2]); // this can throw a invalid_argument exception
+            if (port > 65535 || port < 0) {
+                std::cerr << "Port number must be in range 0-65535" << std::endl;
+                exit (EXIT_FAILURE);
             }
-        }
-        catch (const std::invalid_argument &e)
+        } else if (argc != 1) // 2, 4, 5 ... arguments
         {
-            std::cerr << "Invalid port number: " << argv[2] << std::endl;
-            exit(EXIT_FAILURE);
+            std::cerr << "Usage: " << argv[0] << " [ip_address port]" << std::endl;
+            exit (EXIT_FAILURE);
         }
-        catch (const std::out_of_range &e)
-        {
-            std::cerr << "Port number out of range for type int. : " << argv[2] << std::endl;
-            exit(EXIT_FAILURE);
-        }
-    }
-    else if (argc != 1)
+
+        ccerve::HttpServer server (ip_address, port); // this can throw server specific exceptions
+        server.startListeningSession ();
+    } catch (const std::invalid_argument& excpt) // for non-integer ports (e.g ./cerve 127.0.0.1 hello)
     {
-        std::cerr << "Usage: " << argv[0] << " [ip_address port]" << std::endl;
-        exit(EXIT_FAILURE);
+        std::cerr << "Invalid port number: " << argv[2] << std::endl;
+        exit (EXIT_FAILURE);
+    } catch (const ccerve::exception::ServerSockCreationFailure& excpt) {
+        std::cerr << excpt.what () << "\n";
+        exit (EXIT_FAILURE);
+    } catch (const ccerve::exception::ServerSockBindFailure& excpt) {
+        std::cerr << excpt.what () << "\n";
+        exit (EXIT_FAILURE);
     }
 
-    HTTPServer server(ip_address, port);
-    server.startListeningSession();
     return 0;
 }
