@@ -2,7 +2,25 @@
 
 An HTTP server written from scratch in C++.
 
-### How to run:
+## Project Status
+As of yet, the project is still uncomplete and refined. Alot of the  features still need to be implemented
+and bugs need to be ironed out.  These are my goals as of now:
+- [ ]  Either Non-Blocking I/O or ThreadPool pattern for handling many multiple connections. I came across
+[libevent](https://libevent.org/) which I found promising.
+- [ ]  Tests using [Googletest](https://github.com/google/googletest).
+- [ ]  Refine documentation (Read through the doxygen documentation and use proper syntax).
+- [ ]  Feature for specifying directory which needs to be hosted. 
+- [ ]  Serving HTML showing directory contents in case filename isn't specified in HTTP request.
+- [ ]  Add support for more file types and extend the HTTP protocol.
+- [ ] Use enums for file types, status codes etc.
+
+### TODO for final phase:
+- [ ] CONTRIBUTING.md file
+- [ ]  Security file
+- [ ] Code of Conduct file
+- [ ] Maybe add documentation to Wiki?
+
+## How to run:
 
 First, get the copy of the repo into your local machine:  
 ```bash
@@ -36,25 +54,20 @@ If you run the executable without the `ipaddress` and `port` arguments, it will 
 ./build/cerve 127.0.0.1 6666
 ```
 
-### How to contribute
-1. Fork the repo.
-2. Clone the forked repo into your machine.
-3. Make the desired changes.
-4. Commit and push.
-5. Open the pull request.
+## Performance using [wrk](https://github.com/wg/wrk)
+```bash
+# wrk -t1 -c1 -d60s http://127.0.0.1:8000            
+Running 1m test @ http://127.0.0.1:8000
+  1 threads and 1 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   374.56us  607.06us  20.47ms   92.70%
+    Req/Sec     4.00k     1.22k    7.49k    66.17%
+  238850 requests in 1.00m, 66.29MB read
+Requests/sec:   3978.39
+Transfer/sec:      1.10MB
+```
 
-### Scope of this Project
-1. Basic server
-2. Static File Serving
-3. Server configuration through files
-4. Logger
-
-If I have extra time then I will also do:
-1. Implement HTTPS for security
-2. Implement Asynchronous I/O
-3. Basic GUI
-
-### Resources used to learn
-https://osasazamegbe.medium.com/showing-building-an-http-server-from-scratch-in-c-2da7c0db6cb7  
-https://www.tutorialspoint.com/http/index.htm  
-https://en.cppreference.com/w/
+## Resources used to learn
+1. [Osasazamegbe Medium](https://osasazamegbe.medium.com/showing-building-an-http-server-from-scratch-in-c-2da7c0db6cb7 )  
+2. [TutorialsPoint](https://www.tutorialspoint.com/http/index.html)  
+3. [cppreference](https://en.cppreference.com/w/)
