@@ -1,7 +1,11 @@
 #pragma once
+
+/**
+ * @file utils.hpp
+ * @brief Declarations for general utilities
+ */
+
 #include <ctime>
-#include <string_view>
 
 // @brief Returns string_view of @static_var s_CurrentTimeStr
-const char* getCurrentTime();
-
+const char* getCurrentTime ();

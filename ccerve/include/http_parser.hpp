@@ -1,41 +1,50 @@
 #pragma once
-/**
-* @file Header file containing declarations of HTTP parsing functions
-*/
 
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <map>
+/**
+ * @file http_parser.hpp
+ * @brief Contains declarations of HTTP parsing functions
+ */
+
 #include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <sstream>
 
 #include "GLOBAL.hpp"
 
+namespace ccerve {
 
 /**
-* @brief Namespace for the HTTP specific functions
-*/
-namespace http {
+ * @namespace Namespace for HTTP parsing functions
+ */
+namespace parse {
 
-    using HeaderMap = std::map<std::string, std::string>;
+using HeaderMap = std::map<std::string, std::string>;
 
-    /**
-    * @brief Fills the map with key-value (header: value) pairs that are present in the HTTP message
-    * @param header_map (HeaderMap&) 
-    * @param message (std::string) HTTP message
-    */
-    auto parseMessage(HeaderMap& header_map, const std::string& message) -> void;
+/**
+ * @brief Fills the map with key-value (header: value) pairs that are present in
+ * the HTTP message
+ * @param header_map (HeaderMap&)
+ * @param message (std::string) HTTP message
+ */
+auto parseMessage (HeaderMap& header_map, const std::string& message) -> void;
 
-    /**
-    * @brief  Fills the map with request headers + response headers. The response
-    * headers are filled by calling appropriate functions that query for resources asked for in the request. The key difference in this function and the parseMessage() function is that this assumes that the message is a HTTP Request.
-    * @param  header_map (HeaderMap&).
-    * @param  message HTTP request
-    * @return response (std::string) HTTP response
-    */
-    auto handleRequest(HeaderMap& header_map, const std::string& http_request) -> std::string;
+/**
+ * @brief  Fills the map with request headers + response headers. The response
+ * headers are filled by calling appropriate functions that query for resources
+ * asked for in the request. The key difference in this function and the
+ * parseMessage() function is that this assumes that the message is a HTTP
+ * Request.
+ * @param  header_map (HeaderMap&).
+ * @param  message HTTP request
+ * @return response (std::string) HTTP response
+ */
+auto handleRequest (HeaderMap& header_map, const std::string& http_request) -> std::string;
 
-    auto printHeaderMap(const HeaderMap& header_map) -> void;
+auto printHeaderMap (const HeaderMap& header_map) -> void;
 
-    auto printHeaderKeys(const HeaderMap& header_map) -> void;
-}
+auto printHeaderKeys (const HeaderMap& header_map) -> void;
+
+} // namespace parse
+} // namespace ccerve
